@@ -18,12 +18,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.rest.retrofit_apiservice.RetrofitApiService;
+import com.example.rest.retrofit_apiservice_add.RetrofitApiService;
 import com.example.rest.config.ApiRetrofitRetrofit;
 import com.example.rest.model.Employee;
 import com.example.rest.model.RecyclerAdapter;
 import com.example.rest.model.UploadFileResponse;
-import com.example.rest.springrest_apiservice.SpringRestApiService;
+import com.example.rest.springrest_apiservice_add.SpringRestApiService;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
