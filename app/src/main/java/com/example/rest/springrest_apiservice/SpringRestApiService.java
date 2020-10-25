@@ -1,4 +1,4 @@
-package com.example.rest.springrest_apiservice_add;
+package com.example.rest.springrest_apiservice;
 
 import android.os.AsyncTask;
 import android.util.Log;
@@ -6,28 +6,20 @@ import android.util.Log;
 import com.example.rest.AppConfig;
 import com.example.rest.config.ApiSpringRestClient;
 import com.example.rest.model.Employee;
-import com.example.rest.model.UploadFileResponse;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJacksonHttpMessageConverter;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 
 public class SpringRestApiService {
     protected static final String TAG = SpringRestApiService.class.getSimpleName();
@@ -220,9 +212,9 @@ public class SpringRestApiService {
         @Override
         protected byte[] doInBackground(Void... voids) {
             String url = AppConfig.BASE_URL;
-            RestTemplate restTemplate = new RestTemplate();
+//            RestTemplate restTemplate = new RestTemplate();
 //            restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
-            restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
+//            restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
 
             try {
 
@@ -238,10 +230,19 @@ public class SpringRestApiService {
 //                    ex.printStackTrace();
 //                }
 
-                HttpEntity<Request> httpEntity = new HttpEntity<Request>(apiAuthenticationClient.getRequestHeadersMultiPart());
-                url += "downloadFile/" + fileName;
-                ResponseEntity<byte[]> response = restTemplate.exchange(url, HttpMethod.GET,
-                        httpEntity, byte[].class, "1");
+            RestTemplate restTemplate = new RestTemplate();
+
+                File file = restTemplate.execute(AppConfig.BASE_URL + "downloadFile/aa.png", HttpMethod.GET, null, clientHttpResponse -> {
+                    File ret = File.createTempFile("download", "tmp");
+//                    StreamUtils.copy(clientHttpResponse.getBody(), new FileOutputStream(ret));
+                    return ret;
+                });
+
+
+//                Assert.assertNotNull(file);
+//                Assertions
+//                        .assertThat(file.length())
+//                        .isEqualTo(contentLength);
 
         /*
         if you want to return the downloaded image to some other method, just write
@@ -253,7 +254,6 @@ public class SpringRestApiService {
 //                OutputStream os = new FileOutputStream(new File(""));
 //
 //                os.write(res.getBody());
-                newDomain = response.getBody();
                 return newDomain;
 
             } catch (HttpClientErrorException e) {
