@@ -1,17 +1,14 @@
-package com.example.rest.clientapi_service;
+package com.example.rest.retrofit_apiservice;
 
+import com.example.rest.model.UploadFileResponse;
 import com.example.rest.model.Employee;
 
 import java.util.List;
 
 import okhttp3.MultipartBody;
-import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
-import retrofit2.http.DELETE;
-import retrofit2.http.Field;
-import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.HTTP;
 import retrofit2.http.Multipart;
@@ -36,7 +33,6 @@ public interface RetrofitApiService {
 
 
 
-
     @POST("createEmployee")
     Call<Employee> createEmployee(@Body Employee employee);
 
@@ -56,6 +52,7 @@ public interface RetrofitApiService {
 
     @Multipart
     @POST("uploadFile")
-    Call<ResponseBody> uploadPhotoMultipart(@Part MultipartBody.Part file);
+//    @HTTP(method = "POST", path = "uploadFile", hasBody = true)
+    Call<UploadFileResponse> uploadFileMultipart(@Part MultipartBody.Part file);
 
 }

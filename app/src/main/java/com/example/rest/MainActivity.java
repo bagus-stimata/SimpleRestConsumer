@@ -1,9 +1,12 @@
 package com.example.rest;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -15,21 +18,16 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.rest.clientapi_service.RetrofitApiService;
-import com.example.rest.config.ApiClientRetrofit;
+import com.example.rest.retrofit_apiservice.RetrofitApiService;
+import com.example.rest.config.ApiRetrofitRetrofit;
 import com.example.rest.model.Employee;
 import com.example.rest.model.RecyclerAdapter;
+import com.example.rest.model.UploadFileResponse;
+import com.example.rest.springrest_apiservice.SpringRestApiService;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.SocketTimeoutException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,13 +41,14 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-
 public class MainActivity extends AppCompatActivity {
+    static int REST_CLIENT_METHOD = 1; //1. Spring Rest Client, 2. Retrofit, 3. Volley
+
     Employee employee = new Employee();
     List<Employee> listEmployee = new ArrayList<>();
 
@@ -63,7 +62,11 @@ public class MainActivity extends AppCompatActivity {
     ImageView imageView1;
 
     @BindView(R.id.floatingActionButton1)
-    FloatingActionButton floatingActionButton;
+    FloatingActionButton floatingActionButton1;
+    @BindView(R.id.floatingActionButton2)
+    FloatingActionButton floatingActionButton2;
+    @BindView(R.id.floatingActionButton3)
+    FloatingActionButton floatingActionButton3;
 
     RecyclerAdapter recyclerAdapter;
 
@@ -80,19 +83,73 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
 
-        simpleRestClient_WithRetrofit2();
-        floatingActionButton.setOnClickListener(e -> {
+        if (REST_CLIENT_METHOD==1) {
+            simpleRestClient_WithSpringRestClient();
+        }else if (REST_CLIENT_METHOD==2){
+            simpleRestClient_WithRetrofit2();
+        }
+
+        floatingActionButton1.setOnClickListener(e -> {
             Intent fileIntent = new Intent(Intent.ACTION_GET_CONTENT);
-            fileIntent.setType("*/*");
-//            fileIntent.setType("image/*");
+//            fileIntent.setType("*/*");
+            fileIntent.setType("image/*");
             startActivityForResult(fileIntent, 10);
+        });
+        floatingActionButton2.setOnClickListener(e -> {
+            Intent fileIntent = new Intent(Intent.ACTION_GET_CONTENT);
+//            fileIntent.setType("*/*");
+            fileIntent.setType("application/pdf");
+            startActivityForResult(fileIntent, 11);
+        });
 
-
+        floatingActionButton3.setOnClickListener(e -> {
+            askCameraPermission();
         });
     }
 
+
+    private void askCameraPermission(){
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.CAMERA}, 121);
+        } else {
+            openCamera();
+        }
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode==121 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+            openCamera();
+        }else {
+            Toast.makeText(this, "Tidak dapat mendapatkan akses kamera", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private  void openCamera(){
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        startActivityForResult(takePictureIntent, 12);
+    }
+
+    public void simpleRestClient_WithSpringRestClient() {
+        try {
+            /**
+             * HARUS MENGGUNAKAN OPERASI ASYNCRONOUSE TASK
+             */
+            SpringRestApiService service = new SpringRestApiService();
+            Employee employee = service.getItemById(3);
+            textView1.setText(employee.getName() + " >> " + employee.getDesignation());
+
+            listEmployee.clear();
+            listEmployee.addAll(service.getAllItems());
+            recyclerAdapter.setList(listEmployee);
+
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
+
+    }
     public void simpleRestClient_WithRetrofit2() {
-        RetrofitApiService apiService = ApiClientRetrofit.getClient().create(RetrofitApiService.class);
+        RetrofitApiService apiService = ApiRetrofitRetrofit.getClient().create(RetrofitApiService.class);
 
         Call<Employee> call = apiService.getEmployeeRetrofitPath(3);
         call.enqueue(new Callback<Employee>() {
@@ -125,7 +182,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<List<Employee>> call, Throwable t) {
-
             }
         });
 
@@ -188,126 +244,139 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-//            Response<ResponseBody> response = retrievePicture.execute();
-//            InputStream is = response.body().byteStream();
-//            Bitmap bitmap = BitmapFactory.decodeStream(is);
-
     }
-
-    String mediaPath;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            switch (requestCode) {
-                case 10:
-                    RetrofitApiService apiService = ApiClientRetrofit.getClient().create(RetrofitApiService.class);
+            if (REST_CLIENT_METHOD==1){
+                onActivityResult_SpringRestClient(requestCode, resultCode, data);
+            }else if (REST_CLIENT_METHOD==2) {
+                onActivityResult_Retrofit2(requestCode, resultCode, data);
+            }
+        }//endif
+    }
 
-                    Uri uriPath = data.getData();
-                    Bitmap bitmap = null;
-                    try {
-                        bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uriPath);
-                        imageView1.setImageBitmap(bitmap);
-                    } catch (Exception ex) {
-                    }
+    protected void onActivityResult_SpringRestClient(int requestCode, int resultCode, @Nullable Intent data) {
+        switch (requestCode) {
+            case 10:
+                break;
+            case 11:
+                break;
+            case 12:
+                break;
+            default:
+                break;
+        }
 
+    }
+
+    protected void onActivityResult_Retrofit2(int requestCode, int resultCode, @Nullable Intent data) {
+        RetrofitApiService apiService = ApiRetrofitRetrofit.getClient().create(RetrofitApiService.class);
+        Uri uriPath = data.getData();
+
+        switch (requestCode) {
+            case 10:
 //                    File file = convertBitmapToFile_UsingViaByteArrayOs(bitmap);
+                final File filePhoto = MyFileUtils.convertBitmapToFile_UsingOsLangsung(getApplicationContext(), uriPath);
 
-                    MediaType mediaType = MediaType.parse(getContentResolver().getType(uriPath));
-
-
-                    Toast.makeText(this, mediaType + " >> " + uriPath.getPath() +  " >> " + uriPath.getEncodedPath(),
-                            Toast.LENGTH_LONG).show();
+//                    MediaType mediaType = MediaType.parse(getContentResolver().getType(uriPath));
+//                    Toast.makeText(this, mediaType + " >> " + file.getName() +  " >> " ,
+//                            Toast.LENGTH_LONG).show();
 
 //                    RequestBody requestBody = RequestBody.create(MediaType.parse("image/*"), file);
-////                    RequestBody requestBody = RequestBody.create(MediaType.parse("image/*"), file);
-//                    MultipartBody.Part body = MultipartBody.Part.createFormData("file", file.getName(), requestBody);
-//
-//
-//                    Call<ResponseBody> call = apiService.uploadPhotoMultipart(body);
-//                    call.enqueue(new Callback<ResponseBody>() {
-//                        @Override
-//                        public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-//                            if (response.isSuccessful()) {
-//                                Log.d("UploadImage", "Yeepee!!! = " + response.message());
-//                            }
-//                        }
-//
-//                        @Override
-//                        public void onFailure(Call<ResponseBody> call, Throwable t) {
-//                            if (t instanceof SocketTimeoutException) {
-//                                // "Connection Timeout";
-//                                t.printStackTrace();
-//                                Log.e("UploadImage", "Connection Timeout");
-//                            } else if (t instanceof IOException) {
-//                                // "Timeout";
-//                                t.printStackTrace();
-//                                Log.e("UploadImage", "Timeout");
-//                            } else {
-//                                //Call was cancelled by user
-//                                if (call.isCanceled()) {
-//                                    Log.e("UploadImage", "Call was cancelled forcefully");
-//                                } else {
-//                                    //Generic error handling
-//                                    Log.e("UploadImage", "Network Error :: " + t.getLocalizedMessage());
-//                                }
-//                            }
-//                        }
-//                    });
+                RequestBody requestBody_Photo = RequestBody.create(MediaType.parse(getContentResolver().getType(uriPath)), filePhoto);
+                MultipartBody.Part bodyPhoto = MultipartBody.Part.createFormData("file", filePhoto.getName(), requestBody_Photo);
 
-                    break;
+                Call<UploadFileResponse> call_Photo = apiService.uploadFileMultipart(bodyPhoto);
+                call_Photo.enqueue(new Callback<UploadFileResponse>() {
+                    @Override
+                    public void onResponse(Call<UploadFileResponse> call, Response<UploadFileResponse> response) {
+                        if (response.isSuccessful()) {
+                            UploadFileResponse uploadFileResponse = response.body();
+                            Log.d("UploadImage", "SUCCESSFULL " + uploadFileResponse.getFileName());
 
-                default:
-                    break;
-            }
+                            /**
+                             * Jika Berhasil: Hasilnya ditampilkan dibawah
+                             */
+                            Bitmap bitmap = null;
+                            try {
+                                bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uriPath);
+                                imageView1.setImageBitmap(bitmap); //Menggunakan Pada Response View
+                            } catch (Exception ex) {
+                            }
+
+                        }else {
+                            Toast.makeText(getApplicationContext(), "UPLOAD TIDAK BERHASIL ",Toast.LENGTH_LONG).show();
+                            Log.d("UploadImage", "NOT SUCCESSFULL_" + response.message());
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<UploadFileResponse> call, Throwable t) {
+                    }
+                });
+
+                break;
+
+            case 11:
+                File file = MyFileUtils.convertPdfToFile_UsingOsLangsung(getApplicationContext(), uriPath);
+
+//                    Toast.makeText(this,file.getName() +  "" ,
+//                            Toast.LENGTH_LONG).show();
+
+                RequestBody requestBody_File = RequestBody.create(MediaType.parse(getContentResolver().getType(uriPath)), file);
+                MultipartBody.Part body_File = MultipartBody.Part.createFormData("file", file.getName(), requestBody_File);
+
+
+                Call<UploadFileResponse> call_File = apiService.uploadFileMultipart(body_File);
+                call_File.enqueue(new Callback<UploadFileResponse>() {
+                    @Override
+                    public void onResponse(Call<UploadFileResponse> call, Response<UploadFileResponse> response) {
+                        if (response.isSuccessful()) {
+                            UploadFileResponse uploadFileResponse = response.body();
+                            Log.d("UploadPdf", "SUCCESSFULL " + uploadFileResponse.getFileName());
+                            imageView1.setImageResource(R.drawable.ic_launcher_foreground); //Menggunakan Pada Response View
+
+                        }else {
+                            Toast.makeText(getApplicationContext(), "UPLOAD TIDAK BERHASIL ",Toast.LENGTH_LONG).show();
+                            Log.d("UploadPdf", "NOT SUCCESSFULL_" + response.message());
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<UploadFileResponse> call, Throwable t) {
+                        imageView1.setImageBitmap(null); //Menggunakan Pada Response View
+                    }
+                });
+
+                break;
+            case 12:
+                Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+                File fileCamera = MyFileUtils.convertBitmapToFile_UsingViaByteArrayOs(getApplicationContext(), bitmap);
+
+                RequestBody requestBody_Camera = RequestBody.create( MediaType.parse("image/*"), fileCamera);
+                MultipartBody.Part bodyCamera = MultipartBody.Part.createFormData("file", fileCamera.getName(), requestBody_Camera);
+
+                Call<UploadFileResponse> call_Camera = apiService.uploadFileMultipart(bodyCamera);
+                call_Camera.enqueue(new Callback<UploadFileResponse>() {
+                    @Override
+                    public void onResponse(Call<UploadFileResponse> call, Response<UploadFileResponse> response) {
+                        if (response.isSuccessful()) {
+                            imageView1.setImageBitmap(bitmap);
+                        }else {
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<UploadFileResponse> call, Throwable t) {
+                    }
+                });
+
+                break;
+            default:
+                break;
         }
     }
 
 
-    static Resource createTempFileResource(byte[] content) throws IOException {
-        Path tempFile = Files.createTempFile("upload-file", ".txt");
-        Files.write(tempFile, content);
-        return new FileSystemResource(tempFile.toFile());
-    }
-
-    private File convertBitmapToFile_UsingViaByteArrayOs(Bitmap reducedBitmap) {
-//        File mediaStorageDir = Environment.getExternalStorageDirectory() ;
-//        File file = new File(mediaStorageDir + File.separator + "reduced_file");
-        File mediaStorageDir = getApplicationContext().getFilesDir();
-        File file = new File(mediaStorageDir, "nama_baru.jpg");
-
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        reducedBitmap.compress(Bitmap.CompressFormat.JPEG, 40, byteArrayOutputStream);
-        byte[] imgbytes = byteArrayOutputStream.toByteArray(); //Proses Isi nomor. 1
-        try {
-            file.createNewFile();
-            FileOutputStream fos = new FileOutputStream(file); //Proses Write to File
-            fos.write(imgbytes); //Proses Isi Nomor. 2
-            fos.flush();
-            fos.close();
-            return file;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return file;
-    }
-
-    private File convertBitmapToFile_UsingOsLangsung(Bitmap reducedBitmap) {
-        File mediaStorageDir = getApplicationContext().getFilesDir();
-
-
-        File file = new File(mediaStorageDir, "nama_baru.png");
-
-        OutputStream os;
-        try {
-            os = new FileOutputStream(file); //Proses Write to File
-            reducedBitmap.compress(Bitmap.CompressFormat.PNG, 40, os); //Proses Isi Nomor. 1
-            os.flush();
-            os.close();
-        } catch (Exception e) {
-            Log.e(getClass().getSimpleName(), "Error writing bitmap", e);
-        }
-        return file;
-    }
 }
