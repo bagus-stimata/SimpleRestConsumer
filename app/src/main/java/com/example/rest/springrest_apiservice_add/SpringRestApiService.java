@@ -11,15 +11,23 @@ import com.example.rest.model.UploadFileResponse;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJacksonHttpMessageConverter;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class SpringRestApiService {
     protected static final String TAG = SpringRestApiService.class.getSimpleName();
@@ -181,26 +189,28 @@ public class SpringRestApiService {
     /**
      * UPLOAD PICTURE AND FILE
      */
+    public byte[] getItemByFileName(String fileName) {
+        byte[] domain = null;
+        try {
+            FileUploadAsyncTask asyncTask = (FileUploadAsyncTask) new FileUploadAsyncTask(apiSpringRestClient, fileName);
+            domain = asyncTask.execute().get();
+//        } catch (InterruptedException | ExecutionException e) {
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return domain;
+    }
 
-    public class FileUploadAsyncTask extends AsyncTask<Void, Void, UploadFileResponse> {
+    public class FileUploadAsyncTask extends AsyncTask<Void, Void, byte[]> {
 
 
-        String operation = "";
-        UploadFileResponse newDomain = null;
-        Integer id = 0;
+        byte[] newDomain = null;
+        String fileName = "";
         private ApiSpringRestClient apiAuthenticationClient;
 
-        private FileUploadAsyncTask(ApiSpringRestClient apiAuthenticationClient, Integer id_find, boolean isGetById ) {
+        private FileUploadAsyncTask(ApiSpringRestClient apiAuthenticationClient, String fileName) {
             this.apiAuthenticationClient = apiAuthenticationClient;
-            if (isGetById) {
-                this.id = id_find;
-                operation = "GET_BY_ID";
-            }
-        }
-        private FileUploadAsyncTask(ApiSpringRestClient apiAuthenticationClient, UploadFileResponse newDomain){
-            this.apiAuthenticationClient = apiAuthenticationClient;
-            this.newDomain = newDomain;
-            operation = "ADD_NEW";
+            this.fileName = fileName;
         }
 
         @Override
@@ -208,45 +218,55 @@ public class SpringRestApiService {
         }
 
         @Override
-        protected UploadFileResponse doInBackground(Void... voids) {
+        protected byte[] doInBackground(Void... voids) {
             String url = AppConfig.BASE_URL;
             RestTemplate restTemplate = new RestTemplate();
-            restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
+//            restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
+            restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
 
             try {
 
 //                ResponseEntity<AccAccount> response = restTemplate.exchange(url, HttpMethod.POST, AccAccount.class);
 //                HttpEntity<Object> httpEntity = new HttpEntity<Object>(newAccAccount, apiAuthenticationClient.getRequestHeaders());
 //                ResponseEntity<AccAccount> response = restTemplate.postForEntity(url, httpEntity,  AccAccount.class);
-                ResponseEntity<UploadFileResponse> response = null;
-                try {
-                    if (operation.equals("ADD_NEW")) {
-                        url += "createEmployee";
-                        response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<Object>(newDomain, apiAuthenticationClient.getRequestHeaders()), UploadFileResponse.class);
-                    } else if (operation.equals("UPDATE")) {
-                        url += "putEmployee/" + id;
-                        response = restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<Object>(newDomain, apiAuthenticationClient.getRequestHeaders()), UploadFileResponse.class);
-                    } else if (operation.equals("GET_BY_ID")) {
-                        url += "getEmployeePath/" + id;
-                        response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(apiAuthenticationClient.getRequestHeaders()), UploadFileResponse.class);
-                    }
-                    Log.d(TAG, url + " >> " + response.toString());
-                }catch (Exception ex){
-                }
+//                ResponseEntity<Request> response = null;
+//                try {
+//                    url += "downloadFile/" + fileName;
+//                    response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(apiAuthenticationClient.getRequestHeadersMultiPart()), ResponseBody.class);
+//                    Log.d(TAG, url + " >> " + response.toString());
+//                }catch (Exception ex){
+//                    ex.printStackTrace();
+//                }
 
-                return response!=null? response.getBody(): new UploadFileResponse();
+                HttpEntity<Request> httpEntity = new HttpEntity<Request>(apiAuthenticationClient.getRequestHeadersMultiPart());
+                url += "downloadFile/" + fileName;
+                ResponseEntity<byte[]> response = restTemplate.exchange(url, HttpMethod.GET,
+                        httpEntity, byte[].class, "1");
+
+        /*
+        if you want to return the downloaded image to some other method, just write
+        return res;
+        And skip the following code.
+        */
+
+        //Enter your file path here.
+//                OutputStream os = new FileOutputStream(new File(""));
+//
+//                os.write(res.getBody());
+                newDomain = response.getBody();
+                return newDomain;
 
             } catch (HttpClientErrorException e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
-                return new UploadFileResponse();
+                return newDomain;
             } catch (ResourceAccessException e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
-                return new UploadFileResponse();
+                return newDomain;
             }
         }
 
         @Override
-        protected void onPostExecute(UploadFileResponse result) {
+        protected void onPostExecute(byte[] result) {
         }
     }
 

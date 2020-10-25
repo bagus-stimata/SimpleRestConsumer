@@ -143,6 +143,15 @@ public class MainActivity extends AppCompatActivity {
             listEmployee.addAll(service.getAllItems());
             recyclerAdapter.setList(listEmployee);
 
+            try {
+                byte[] response = service.getItemByFileName("aa.png");
+//                InputStream is = response.byteStream();
+//                Bitmap bitmap = BitmapFactory.decodeStream(is);
+//                imageView1.setImageBitmap(bitmap);
+            }catch (Exception ex){
+                ex.printStackTrace();
+            }
+
         }catch (Exception ex){
             ex.printStackTrace();
         }
@@ -229,13 +238,15 @@ public class MainActivity extends AppCompatActivity {
 //        });
 
         Call<ResponseBody> callRetrievePicture = apiService.downloadImageOrFile("aa.png");
-
         callRetrievePicture.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                InputStream is = response.body().byteStream();
-                Bitmap bitmap = BitmapFactory.decodeStream(is);
-                imageView1.setImageBitmap(bitmap);
+                try {
+                    InputStream is = response.body().byteStream();
+                    Bitmap bitmap = BitmapFactory.decodeStream(is);
+                    imageView1.setImageBitmap(bitmap);
+                }catch (Exception ex){
+                }
             }
 
             @Override

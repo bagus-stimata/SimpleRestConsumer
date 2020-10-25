@@ -5,7 +5,9 @@ import org.springframework.http.HttpBasicAuthentication;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class ApiSpringRestClient {
 
@@ -37,6 +39,13 @@ public class ApiSpringRestClient {
     public HttpHeaders getRequestHeadersMultiPart(){
         requestHeadersMultiPart = new HttpHeaders();
         requestHeadersMultiPart.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        List<MediaType> acceptableMediaTypes = new ArrayList<>();
+
+        acceptableMediaTypes.add(MediaType.IMAGE_JPEG);
+        acceptableMediaTypes.add(MediaType.APPLICATION_OCTET_STREAM);
+        requestHeaders.setAccept(acceptableMediaTypes);
+        
         return requestHeadersMultiPart;
     }
 //    public ApiSpringRestClient setBaseUrl(String baseUrl) {
