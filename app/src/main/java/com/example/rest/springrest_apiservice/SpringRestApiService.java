@@ -2,20 +2,29 @@ package com.example.rest.springrest_apiservice;
 
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.example.rest.AppConfig;
 import com.example.rest.config.ApiSpringRestClient;
 import com.example.rest.model.Employee;
 
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJacksonHttpMessageConverter;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -181,8 +190,8 @@ public class SpringRestApiService {
     /**
      * UPLOAD PICTURE AND FILE
      */
-    public byte[] getItemByFileName(String fileName) {
-        byte[] domain = null;
+    public ByteArrayResource getItemByFileName(String fileName) {
+        ByteArrayResource domain = null;
         try {
             FileUploadAsyncTask asyncTask = (FileUploadAsyncTask) new FileUploadAsyncTask(apiSpringRestClient, fileName);
             domain = asyncTask.execute().get();
@@ -193,10 +202,10 @@ public class SpringRestApiService {
         return domain;
     }
 
-    public class FileUploadAsyncTask extends AsyncTask<Void, Void, byte[]> {
+    public class FileUploadAsyncTask extends AsyncTask<Void, Void, ByteArrayResource> {
 
 
-        byte[] newDomain = null;
+        ByteArrayResource newDomain = null;
         String fileName = "";
         private ApiSpringRestClient apiAuthenticationClient;
 
@@ -210,13 +219,15 @@ public class SpringRestApiService {
         }
 
         @Override
-        protected byte[] doInBackground(Void... voids) {
+        protected ByteArrayResource doInBackground(Void... voids) {
             String url = AppConfig.BASE_URL;
 //            RestTemplate restTemplate = new RestTemplate();
 //            restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
 //            restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
 
             try {
+                RestTemplate restTemplate = new RestTemplate();
+                restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
 
 //                ResponseEntity<AccAccount> response = restTemplate.exchange(url, HttpMethod.POST, AccAccount.class);
 //                HttpEntity<Object> httpEntity = new HttpEntity<Object>(newAccAccount, apiAuthenticationClient.getRequestHeaders());
@@ -229,33 +240,32 @@ public class SpringRestApiService {
 //                }catch (Exception ex){
 //                    ex.printStackTrace();
 //                }
+                ByteArrayResource responseByte = null;
+                try {
+                    byte[] newDomain =null;
 
-            RestTemplate restTemplate = new RestTemplate();
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM, MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG));
+                    HttpEntity<Object> httpEntity = new HttpEntity<>(newDomain, headers);
 
-                File file = restTemplate.execute(AppConfig.BASE_URL + "downloadFile/aa.png", HttpMethod.GET, null, clientHttpResponse -> {
-                    File ret = File.createTempFile("download", "tmp");
-//                    StreamUtils.copy(clientHttpResponse.getBody(), new FileOutputStream(ret));
-                    return ret;
-                });
+                    Log.d("Hello", ">>> " + "aa");
 
+                    ResponseEntity<byte[]> responseBos = restTemplate.exchange("http://192.168.1.100.:8085/downloadFile/aa.png", HttpMethod.GET, httpEntity, byte[].class);
 
-//                Assert.assertNotNull(file);
-//                Assertions
-//                        .assertThat(file.length())
-//                        .isEqualTo(contentLength);
+                    Log.d("Hello", ">>> " + "cc");
 
-        /*
-        if you want to return the downloaded image to some other method, just write
-        return res;
-        And skip the following code.
-        */
+//                    Log.d("Hello", ">>> " + responseBos.getBody().length);
 
-        //Enter your file path here.
-//                OutputStream os = new FileOutputStream(new File(""));
-//
-//                os.write(res.getBody());
-                return newDomain;
+//                    ResponseEntity<ByteArrayResource> response = restTemplate.exchange("http://192.168.1.100.:8085/downloadFile/aa.png", HttpMethod.GET, entity, ByteArrayResource.class);
+//                    Files.write(Paths.get("e:\\download-files\\demo1.pdf"), response.getBody());
+//                    responseByte = response.getBody();
+//                    Log.d("Hello", ">>> " + response.getBody().contentLength());
 
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+
+                return responseByte;
             } catch (HttpClientErrorException e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
                 return newDomain;
@@ -266,7 +276,7 @@ public class SpringRestApiService {
         }
 
         @Override
-        protected void onPostExecute(byte[] result) {
+        protected void onPostExecute(ByteArrayResource result) {
         }
     }
 

@@ -26,6 +26,7 @@ import com.example.rest.model.UploadFileResponse;
 import com.example.rest.springrest_apiservice.SpringRestApiService;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -45,6 +46,8 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import org.springframework.core.io.ByteArrayResource;
 
 public class MainActivity extends AppCompatActivity {
     static int REST_CLIENT_METHOD = 1; //1. Spring Rest Client, 2. Retrofit, 3. Volley
@@ -144,8 +147,12 @@ public class MainActivity extends AppCompatActivity {
             recyclerAdapter.setList(listEmployee);
 
             try {
-                byte[] response = service.getItemByFileName("aa.png");
-//                InputStream is = response.byteStream();
+//                Log.d("Hello", ">>> " + "aaaa");
+
+                Toast.makeText(getApplicationContext(), "Oke lah bos", Toast.LENGTH_SHORT).show();
+                ByteArrayResource responseByte = service.getItemByFileName("aa.png");
+//                Toast.makeText(getApplicationContext(), String.valueOf(responseByte.contentLength()), Toast.LENGTH_SHORT).show();
+//                InputStream is = new ByteArrayInputStream(responseByte.getByteArray());
 //                Bitmap bitmap = BitmapFactory.decodeStream(is);
 //                imageView1.setImageBitmap(bitmap);
             }catch (Exception ex){
