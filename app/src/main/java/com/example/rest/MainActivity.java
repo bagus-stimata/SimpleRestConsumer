@@ -281,20 +281,46 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult_SpringRestClient(int requestCode, int resultCode, @Nullable Intent data) {
         SpringRestApiService service = new SpringRestApiService();
         Uri uriPath = data.getData();
+        Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+
         switch (requestCode) {
             case 10:
                 final File filePhoto = MyFileUtils.convertBitmapToFile_UsingOsLangsung(getApplicationContext(), uriPath);
+                /**
+                 * dibawah ini adalah metodenya Retrofit2
+                 * Rekomendasi: Ini sebaiknya dijadikan satu dengan Class Upload Tersendiri
+                 * Jadi Retrofit2 memempunya dua kelas
+                 * 1. Kelas untuk Meload Request Body -> dan Mengamil hasil Response
+                 * 2. Kelas Untuk Interfacenya
+                 *
+                 */
 //                RequestBody requestBody_Photo = RequestBody.create(MediaType.parse(getContentResolver().getType(uriPath)), filePhoto);
 //                MultipartBody.Part bodyPhoto = MultipartBody.Part.createFormData("file", filePhoto.getName(), requestBody_Photo);
 
-                UploadFileResponse response = service.uploadFileResponse(filePhoto);
+                UploadFileResponse responsePhoto = service.uploadFileResponse(filePhoto);
+                if (responsePhoto !=null) {
+                    imageView1.setImageBitmap(bitmap);
+                }
 
-                Toast.makeText(getApplicationContext(), "hello bos", Toast.LENGTH_LONG).show();
+//                Toast.makeText(getApplicationContext(), "hello bos : " + responsePhoto.getFileName() , Toast.LENGTH_LONG).show();
+//                Toast.makeText(getApplicationContext(), "hello bos : "  , Toast.LENGTH_LONG).show();
 
                 break;
             case 11:
+
+                final File filePdf = MyFileUtils.convertPdfToFile_UsingOsLangsung(getApplicationContext(), uriPath);
+                UploadFileResponse responseDir = service.uploadFileResponse(filePdf);
+                if (responseDir !=null) {
+                    imageView1.setImageResource(R.drawable.ic_launcher_foreground); //Menggunakan Pada Response View
+                }
                 break;
             case 12:
+                File fileCamera = MyFileUtils.convertBitmapToFile_UsingViaByteArrayOs(getApplicationContext(), bitmap);
+                UploadFileResponse responseCamera = service.uploadFileResponse(fileCamera);
+                if (responseCamera !=null) {
+                    imageView1.setImageBitmap(bitmap);
+                }
+
                 break;
             default:
                 break;

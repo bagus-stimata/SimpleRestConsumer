@@ -36,9 +36,17 @@ public class ApiSpringRestClient {
         requestHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         return  requestHeaders;
     }
-    public HttpHeaders getRequestHeadersMultiPart(){
+    public HttpHeaders getRequestHeaders_FileDownload(){
         requestHeadersMultiPart = new HttpHeaders();
+        /**
+         *  requestHeadersMultiPart.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+         * harus dipasangkan dengan
+         *  restTemplate.getMessageConverters().add(new FormHttpMessageConverter());
+         * pada restTemplate
+         * atau malah di Kosongkan malah lebih baik
+         */
 //       Ingat Ini yang buat tidak mau Jalan >>  requestHeadersMultiPart.setContentType(MediaType.MULTIPART_FORM_DATA);
+        requestHeadersMultiPart.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         List<MediaType> acceptableMediaTypes = new ArrayList<>();
 

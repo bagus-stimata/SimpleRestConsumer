@@ -9,6 +9,8 @@ import com.example.rest.model.Employee;
 import com.example.rest.model.UploadFileResponse;
 
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,8 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
+import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.GsonHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJacksonHttpMessageConverter;
 import org.springframework.util.FileCopyUtils;
@@ -28,12 +30,13 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-
-import okhttp3.MultipartBody;
 
 public class SpringRestApiService {
     protected static final String TAG = SpringRestApiService.class.getSimpleName();
@@ -246,11 +249,12 @@ public class SpringRestApiService {
                 try {
                     RestTemplate restTemplate = new RestTemplate();
                     restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter()); //Hanya bisa digunakan untuk type -> byte[]
+                    restTemplate.getMessageConverters().add(new FormHttpMessageConverter()); //Pasangan dari -> requestHeadersMultiPart.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
 //                    HttpHeaders headers = new HttpHeaders();
 //                    headers.setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM));
 //                    HttpEntity<String> entity = new HttpEntity<String>(headers);
-                    HttpEntity<ByteArrayResource> httpEntity = new HttpEntity<ByteArrayResource>(apiSpringRestClient.getRequestHeadersMultiPart());
+                    HttpEntity<ByteArrayResource> httpEntity = new HttpEntity<ByteArrayResource>(apiSpringRestClient.getRequestHeaders_FileDownload());
 
 //                    ResponseEntity<byte[]> response = restTemplate.exchange(AppConfig.BASE_URL + "downloadFile/abc.jpg", HttpMethod.GET, entity, byte[].class, "1");  //uriVariable "1" TIDAK WAJIB, tapi sebaiknya
                     ResponseEntity<byte[]> response = restTemplate.exchange(AppConfig.BASE_URL + "downloadFile/" + fileName, HttpMethod.GET, httpEntity, byte[].class, "1");
@@ -283,7 +287,7 @@ public class SpringRestApiService {
 
     public class FileUploadAsyncTask extends AsyncTask<Void, Void,  UploadFileResponse> {
 
-        UploadFileResponse responseByteArray = null;
+        UploadFileResponse responseDomain = null;
         File  file;
         private ApiSpringRestClient apiAuthenticationClient;
 
@@ -303,70 +307,45 @@ public class SpringRestApiService {
 
                 try {
                     RestTemplate restTemplate = new RestTemplate();
-                    restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
-                    restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
-                    restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
-                    restTemplate.getMessageConverters().add(new StringHttpMessageConverter());
+                    restTemplate.getMessageConverters().add(new FormHttpMessageConverter()); // Pasangan untuk Request -> requestHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+//                    restTemplate.getMessageConverters().add(new StringHttpMessageConverter()); //Pasangan untuk Response -> ResponseEntity<String> response
+                    restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());  //Pasangan untuk Response -> ResponseEntity<UploadFileResponse> response
 
 
+                    Resource resource = new FileSystemResource(file); //--> harus Resource
+//                    byte[] fileAsResource = FileCopyUtils.copyToByteArray(file);//Tidak bisa menggunakan ini *Note Sangat berbeda dengan download ya
 
-//                    ByteArrayResource fileAsResource = new ByteArrayResource(file.getBytes() ){
-//                        @Override
-//                        public String getFilename(){
-//                            return file.getName();
-//                        }
-//                    };
-//                    MultiValueMap<String, String> fileMap = new LinkedMultiValueMap<>();
-                    byte[] fileAsResource = FileCopyUtils.copyToByteArray(file);
-                    HttpEntity<byte[]> fileEntity = new HttpEntity<>(fileAsResource);
-
-                    if (fileAsResource==null) {
-                        Log.d("Hello", "Gak Onok bos");
-                    }
-
-
-
-                    MultiValueMap<String,Object> multipartRequest = new LinkedMultiValueMap<>();
 
                     HttpHeaders requestHeaders = new HttpHeaders();
                     requestHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);//Main request's headers
 
+//                    LinkedMultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                    body.add("file", resource);
+//Tidak boleh dan tidak bisa menggunakan ini oke -> body.add("file", fileAsResource);
 
-                    HttpHeaders requestHeadersAttachment = new HttpHeaders();
-                    requestHeadersAttachment.setContentType(MediaType.IMAGE_PNG);// extract mediatype from file extension
-                    HttpEntity<byte[]> attachmentPart;
-                    attachmentPart = new HttpEntity<>(fileAsResource, requestHeadersAttachment);
+                    HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, requestHeaders);
 
-                    multipartRequest.set("file",attachmentPart);
-
-                    HttpEntity<MultiValueMap<String,Object>> requestEntity = new HttpEntity<>(multipartRequest, requestHeaders);//final request
-
-                    ResponseEntity<String> response = restTemplate.exchange(AppConfig.BASE_URL + "uploadFileString",
-                            HttpMethod.POST, requestEntity, String.class);
+                    ResponseEntity<UploadFileResponse> response = restTemplate.exchange(AppConfig.BASE_URL + "uploadFile",
+                            HttpMethod.POST, requestEntity, UploadFileResponse.class);
 
 
-//                    ResponseEntity<UploadFileResponse> response = restTemplate.exchange(AppConfig.BASE_URL + "uploadFile" , HttpMethod.POST, httpEntity, UploadFileResponse.class, "1");
-
-//                    if (response.getStatusCode() == HttpStatus.OK) {
-//                        Files.write(Paths.get("google.png"), response.getBody());
-//                    }
-
-
-
-
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        responseDomain = response.getBody();
+                    }
 
 
                 }catch (Exception e){
                     e.printStackTrace();
                 }
 
-                return responseByteArray;
+                return responseDomain;
             } catch (HttpClientErrorException e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
-                return responseByteArray;
+                return responseDomain;
             } catch (ResourceAccessException e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
-                return responseByteArray;
+                return responseDomain;
             }
         }
 
@@ -374,6 +353,6 @@ public class SpringRestApiService {
         protected void onPostExecute( UploadFileResponse result) {
         }
     }
-
-
 }
+
+
