@@ -38,11 +38,12 @@ public class ApiSpringRestClient {
     }
     public HttpHeaders getRequestHeadersMultiPart(){
         requestHeadersMultiPart = new HttpHeaders();
-        requestHeadersMultiPart.setContentType(MediaType.MULTIPART_FORM_DATA);
+//       Ingat Ini yang buat tidak mau Jalan >>  requestHeadersMultiPart.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         List<MediaType> acceptableMediaTypes = new ArrayList<>();
 
         acceptableMediaTypes.add(MediaType.IMAGE_JPEG);
+        acceptableMediaTypes.add(MediaType.IMAGE_PNG);
         acceptableMediaTypes.add(MediaType.APPLICATION_OCTET_STREAM);
         requestHeaders.setAccept(acceptableMediaTypes);
         

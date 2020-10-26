@@ -2,33 +2,38 @@ package com.example.rest.springrest_apiservice;
 
 import android.os.AsyncTask;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.example.rest.AppConfig;
 import com.example.rest.config.ApiSpringRestClient;
 import com.example.rest.model.Employee;
+import com.example.rest.model.UploadFileResponse;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.GsonHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJacksonHttpMessageConverter;
+import org.springframework.util.FileCopyUtils;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+
+import okhttp3.MultipartBody;
 
 public class SpringRestApiService {
     protected static final String TAG = SpringRestApiService.class.getSimpleName();
@@ -37,7 +42,7 @@ public class SpringRestApiService {
     public SpringRestApiService(){
     }
     public Employee getItemById(int id) {
-        CrudAsyncTask asyncTask = (CrudAsyncTask) new CrudAsyncTask(apiSpringRestClient, id, true);
+        CrudAsyncTask asyncTask = new CrudAsyncTask(apiSpringRestClient, id, true);
         Employee domain = null;
         try {
             domain = asyncTask.execute().get();
@@ -51,15 +56,15 @@ public class SpringRestApiService {
     public void createItem(Employee domain) {
         new SpringRestApiService.CrudAsyncTask(apiSpringRestClient, domain).execute();
     }
-    public void updateAccAccount(Integer id, Employee domain) {
+    public void updateItem(Integer id, Employee domain) {
         new SpringRestApiService.CrudAsyncTask(apiSpringRestClient, id, domain).execute();
     }
-    public void deleteAccAccount(Integer id) {
+    public void deleteItem(Integer id) {
         new SpringRestApiService.CrudAsyncTask(apiSpringRestClient, id).execute();
     }
 
     public List<Employee> getAllItems() {
-        FecthItemsAsyncTask asyncTask = (FecthItemsAsyncTask) new FecthItemsAsyncTask(apiSpringRestClient);
+        FecthItemsAsyncTask asyncTask = new FecthItemsAsyncTask(apiSpringRestClient);
         List<Employee> listItems = new ArrayList<>();
         try {
             listItems = asyncTask.execute().get();
@@ -190,26 +195,41 @@ public class SpringRestApiService {
     /**
      * UPLOAD PICTURE AND FILE
      */
-    public ByteArrayResource getItemByFileName(String fileName) {
-        ByteArrayResource domain = null;
+    public  byte[] downloadFileByFileName(String fileName) {
+        byte[] domain = null;
         try {
-            FileUploadAsyncTask asyncTask = (FileUploadAsyncTask) new FileUploadAsyncTask(apiSpringRestClient, fileName);
+            FileDownloadAsyncTask asyncTask = new FileDownloadAsyncTask(apiSpringRestClient, fileName);
             domain = asyncTask.execute().get();
-//        } catch (InterruptedException | ExecutionException e) {
-        } catch (Exception e) {
+        } catch (InterruptedException | ExecutionException e) {
+//        } catch (Exception e) {
             e.printStackTrace();
         }
         return domain;
     }
 
-    public class FileUploadAsyncTask extends AsyncTask<Void, Void, ByteArrayResource> {
+    public UploadFileResponse uploadFileResponse( File file) {
+        UploadFileResponse domain = null;
+        try {
+            FileUploadAsyncTask asyncTask = new FileUploadAsyncTask(apiSpringRestClient, file);
+            domain = asyncTask.execute().get();
+        } catch (InterruptedException | ExecutionException e) {
+//        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return domain;
+    }
 
+    /**
+     * Hanya bisa menggunaakn type -> byte[]
+     * sudah di coba tipe yang lain tidak bisa
+     */
+    public class FileDownloadAsyncTask extends AsyncTask<Void, Void,  byte[]> {
 
-        ByteArrayResource newDomain = null;
+        byte[] responseByteArray = null;
         String fileName = "";
         private ApiSpringRestClient apiAuthenticationClient;
 
-        private FileUploadAsyncTask(ApiSpringRestClient apiAuthenticationClient, String fileName) {
+        private FileDownloadAsyncTask(ApiSpringRestClient apiAuthenticationClient, String fileName) {
             this.apiAuthenticationClient = apiAuthenticationClient;
             this.fileName = fileName;
         }
@@ -219,65 +239,141 @@ public class SpringRestApiService {
         }
 
         @Override
-        protected ByteArrayResource doInBackground(Void... voids) {
+        protected  byte[] doInBackground(Void... voids) {
             String url = AppConfig.BASE_URL;
-//            RestTemplate restTemplate = new RestTemplate();
-//            restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
-//            restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
-
             try {
-                RestTemplate restTemplate = new RestTemplate();
-                restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
 
-//                ResponseEntity<AccAccount> response = restTemplate.exchange(url, HttpMethod.POST, AccAccount.class);
-//                HttpEntity<Object> httpEntity = new HttpEntity<Object>(newAccAccount, apiAuthenticationClient.getRequestHeaders());
-//                ResponseEntity<AccAccount> response = restTemplate.postForEntity(url, httpEntity,  AccAccount.class);
-//                ResponseEntity<Request> response = null;
-//                try {
-//                    url += "downloadFile/" + fileName;
-//                    response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(apiAuthenticationClient.getRequestHeadersMultiPart()), ResponseBody.class);
-//                    Log.d(TAG, url + " >> " + response.toString());
-//                }catch (Exception ex){
-//                    ex.printStackTrace();
-//                }
-                ByteArrayResource responseByte = null;
                 try {
-                    byte[] newDomain =null;
+                    RestTemplate restTemplate = new RestTemplate();
+                    restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter()); //Hanya bisa digunakan untuk type -> byte[]
 
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM, MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG));
-                    HttpEntity<Object> httpEntity = new HttpEntity<>(newDomain, headers);
+//                    HttpHeaders headers = new HttpHeaders();
+//                    headers.setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM));
+//                    HttpEntity<String> entity = new HttpEntity<String>(headers);
+                    HttpEntity<ByteArrayResource> httpEntity = new HttpEntity<ByteArrayResource>(apiSpringRestClient.getRequestHeadersMultiPart());
 
-                    Log.d("Hello", ">>> " + "aa");
+//                    ResponseEntity<byte[]> response = restTemplate.exchange(AppConfig.BASE_URL + "downloadFile/abc.jpg", HttpMethod.GET, entity, byte[].class, "1");  //uriVariable "1" TIDAK WAJIB, tapi sebaiknya
+                    ResponseEntity<byte[]> response = restTemplate.exchange(AppConfig.BASE_URL + "downloadFile/" + fileName, HttpMethod.GET, httpEntity, byte[].class, "1");
 
-                    ResponseEntity<byte[]> responseBos = restTemplate.exchange("http://192.168.1.100.:8085/downloadFile/aa.png", HttpMethod.GET, httpEntity, byte[].class);
-
-                    Log.d("Hello", ">>> " + "cc");
-
-//                    Log.d("Hello", ">>> " + responseBos.getBody().length);
-
-//                    ResponseEntity<ByteArrayResource> response = restTemplate.exchange("http://192.168.1.100.:8085/downloadFile/aa.png", HttpMethod.GET, entity, ByteArrayResource.class);
-//                    Files.write(Paths.get("e:\\download-files\\demo1.pdf"), response.getBody());
-//                    responseByte = response.getBody();
-//                    Log.d("Hello", ">>> " + response.getBody().contentLength());
+                    if (response.getStatusCode() == HttpStatus.OK) {
+//                        Files.write(Paths.get("google.png"), response.getBody());
+                            responseByteArray = response.getBody();
+                    }
 
                 }catch (Exception e){
                     e.printStackTrace();
                 }
 
-                return responseByte;
+                return responseByteArray;
             } catch (HttpClientErrorException e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
-                return newDomain;
+                return responseByteArray;
             } catch (ResourceAccessException e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
-                return newDomain;
+                return responseByteArray;
             }
         }
 
         @Override
-        protected void onPostExecute(ByteArrayResource result) {
+        protected void onPostExecute( byte[] result) {
         }
     }
+
+
+
+    public class FileUploadAsyncTask extends AsyncTask<Void, Void,  UploadFileResponse> {
+
+        UploadFileResponse responseByteArray = null;
+        File  file;
+        private ApiSpringRestClient apiAuthenticationClient;
+
+        private FileUploadAsyncTask(ApiSpringRestClient apiAuthenticationClient,  File  file) {
+            this.apiAuthenticationClient = apiAuthenticationClient;
+            this.file = file;
+        }
+
+        @Override
+        protected void onPreExecute() {
+        }
+
+        @Override
+        protected UploadFileResponse doInBackground(Void... voids) {
+            String url = AppConfig.BASE_URL;
+            try {
+
+                try {
+                    RestTemplate restTemplate = new RestTemplate();
+                    restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                    restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
+                    restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
+                    restTemplate.getMessageConverters().add(new StringHttpMessageConverter());
+
+
+
+//                    ByteArrayResource fileAsResource = new ByteArrayResource(file.getBytes() ){
+//                        @Override
+//                        public String getFilename(){
+//                            return file.getName();
+//                        }
+//                    };
+//                    MultiValueMap<String, String> fileMap = new LinkedMultiValueMap<>();
+                    byte[] fileAsResource = FileCopyUtils.copyToByteArray(file);
+                    HttpEntity<byte[]> fileEntity = new HttpEntity<>(fileAsResource);
+
+                    if (fileAsResource==null) {
+                        Log.d("Hello", "Gak Onok bos");
+                    }
+
+
+
+                    MultiValueMap<String,Object> multipartRequest = new LinkedMultiValueMap<>();
+
+                    HttpHeaders requestHeaders = new HttpHeaders();
+                    requestHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);//Main request's headers
+
+
+                    HttpHeaders requestHeadersAttachment = new HttpHeaders();
+                    requestHeadersAttachment.setContentType(MediaType.IMAGE_PNG);// extract mediatype from file extension
+                    HttpEntity<byte[]> attachmentPart;
+                    attachmentPart = new HttpEntity<>(fileAsResource, requestHeadersAttachment);
+
+                    multipartRequest.set("file",attachmentPart);
+
+                    HttpEntity<MultiValueMap<String,Object>> requestEntity = new HttpEntity<>(multipartRequest, requestHeaders);//final request
+
+                    ResponseEntity<String> response = restTemplate.exchange(AppConfig.BASE_URL + "uploadFileString",
+                            HttpMethod.POST, requestEntity, String.class);
+
+
+//                    ResponseEntity<UploadFileResponse> response = restTemplate.exchange(AppConfig.BASE_URL + "uploadFile" , HttpMethod.POST, httpEntity, UploadFileResponse.class, "1");
+
+//                    if (response.getStatusCode() == HttpStatus.OK) {
+//                        Files.write(Paths.get("google.png"), response.getBody());
+//                    }
+
+
+
+
+
+
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+
+                return responseByteArray;
+            } catch (HttpClientErrorException e) {
+                Log.e(TAG, e.getLocalizedMessage(), e);
+                return responseByteArray;
+            } catch (ResourceAccessException e) {
+                Log.e(TAG, e.getLocalizedMessage(), e);
+                return responseByteArray;
+            }
+        }
+
+        @Override
+        protected void onPostExecute( UploadFileResponse result) {
+        }
+    }
+
 
 }

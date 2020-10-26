@@ -47,8 +47,6 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.springframework.core.io.ByteArrayResource;
-
 public class MainActivity extends AppCompatActivity {
     static int REST_CLIENT_METHOD = 1; //1. Spring Rest Client, 2. Retrofit, 3. Volley
 
@@ -149,12 +147,16 @@ public class MainActivity extends AppCompatActivity {
             try {
 //                Log.d("Hello", ">>> " + "aaaa");
 
-                Toast.makeText(getApplicationContext(), "Oke lah bos", Toast.LENGTH_SHORT).show();
-                ByteArrayResource responseByte = service.getItemByFileName("aa.png");
+                byte[] responseByte = service.downloadFileByFileName("abc.jpg");
+
+//                Toast.makeText(getApplicationContext(), "Oke lah bos: " , Toast.LENGTH_SHORT).show();
+//                Log.d("Hello", ">>> " + "aaaa");
+
+
 //                Toast.makeText(getApplicationContext(), String.valueOf(responseByte.contentLength()), Toast.LENGTH_SHORT).show();
-//                InputStream is = new ByteArrayInputStream(responseByte.getByteArray());
-//                Bitmap bitmap = BitmapFactory.decodeStream(is);
-//                imageView1.setImageBitmap(bitmap);
+                InputStream is = new ByteArrayInputStream(responseByte);
+                Bitmap bitmap = BitmapFactory.decodeStream(is);
+                imageView1.setImageBitmap(bitmap);
             }catch (Exception ex){
                 ex.printStackTrace();
             }
@@ -277,8 +279,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void onActivityResult_SpringRestClient(int requestCode, int resultCode, @Nullable Intent data) {
+        SpringRestApiService service = new SpringRestApiService();
+        Uri uriPath = data.getData();
         switch (requestCode) {
             case 10:
+                final File filePhoto = MyFileUtils.convertBitmapToFile_UsingOsLangsung(getApplicationContext(), uriPath);
+//                RequestBody requestBody_Photo = RequestBody.create(MediaType.parse(getContentResolver().getType(uriPath)), filePhoto);
+//                MultipartBody.Part bodyPhoto = MultipartBody.Part.createFormData("file", filePhoto.getName(), requestBody_Photo);
+
+                UploadFileResponse response = service.uploadFileResponse(filePhoto);
+
+                Toast.makeText(getApplicationContext(), "hello bos", Toast.LENGTH_LONG).show();
+
                 break;
             case 11:
                 break;
