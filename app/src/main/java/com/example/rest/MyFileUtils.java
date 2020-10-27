@@ -124,4 +124,26 @@ public class MyFileUtils {
         return file;
     }
 
+
+    public static void CopyStream(InputStream is, OutputStream os){
+        final int buffer_size=1024 * 8;
+        try{
+//            byte[] bytes=new byte[buffer_size];
+//            for(;;)
+//            {
+//                int count=is.read(bytes, 0, buffer_size);
+//                if(count==-1)
+//                    break;
+//                os.write(bytes, 0, count);
+//            }
+
+            byte[] buf = new byte[buffer_size];
+            int length;
+            while ((length = is.read(buf)) > 0) {
+                os.write(buf, 0, length);
+            }
+        }
+        catch(Exception ex){}
+    }
+
 }

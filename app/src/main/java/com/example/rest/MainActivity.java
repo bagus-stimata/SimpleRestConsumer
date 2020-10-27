@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -19,6 +20,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 import  com.squareup.picasso.*;
 
 import com.bumptech.glide.Glide;
@@ -80,6 +83,10 @@ public class MainActivity extends AppCompatActivity {
     FloatingActionButton floatingActionButton2;
     @BindView(R.id.floatingActionButton3)
     FloatingActionButton floatingActionButton3;
+    @BindView(R.id.floatingActionButton4)
+    FloatingActionButton floatingActionButton4;
+    @BindView(R.id.floatingActionButton5)
+    FloatingActionButton floatingActionButton5;
 
     RecyclerAdapter recyclerAdapter;
 
@@ -128,6 +135,15 @@ public class MainActivity extends AppCompatActivity {
             askCameraPermission();
         });
 
+        floatingActionButton4.setOnClickListener(e -> {
+            glideAndPicassoChaceLoad();
+        });
+
+        floatingActionButton5.setOnClickListener(e -> {
+            Intent intent = new Intent(this, PhotoGalleryActivity.class);
+            intent.putExtra("parameter1", "Hello dari Parameter1, dikirim ya?");
+            startActivity(intent);
+        });
 
     }
 
@@ -191,10 +207,14 @@ public class MainActivity extends AppCompatActivity {
 //                                .addHeader("Accept", ABC)
                                 .build());
 
+                /**
+                 * Glide Basic
+                 */
                 Glide.with(this)
                         .load(glideUrl)
                         .circleCrop()
                         .into(imageView1);
+
 
             }else if (PICTURE_SHOW ==2) {
                 //USING PICASSO
@@ -501,4 +521,87 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    protected void glideAndPicassoChaceLoad(){
+        /**
+         * Untuk penggunaaan secara manual harusnya mengunakan Image Loader tapi
+         * ImageLoader pada Klass dalam project ini kurang efisien
+         * yang benar harusnya menggunakan teknik pada Glide dan buat sendiri
+         * Glide Caching Srategy
+         *
+         * https://android.jlelse.eu/best-strategy-to-load-images-using-glide-image-loading-library-for-android-e2b6ba9f75b2
+         *
+         */
+
+        if (PICTURE_SHOW ==1) {
+            //USING GLIDE
+            String url = AppConfig.BASE_URL + "downloadFile/abc.jpg";
+            GlideUrl glideUrl = new GlideUrl(url,
+                    new LazyHeaders.Builder()
+                            .addHeader("Authorization", authHeader)
+    //                                .addHeader("Cookie", AUTHORIZATION)
+    //                                .addHeader("Accept", ABC)
+                            .build());
+
+            /**
+             * Glide Caching Srategy
+             * https://android.jlelse.eu/best-strategy-to-load-images-using-glide-image-loading-library-for-android-e2b6ba9f75b2
+             */
+            RequestOptions requestOptions = RequestOptions
+                    .diskCacheStrategyOf(DiskCacheStrategy.AUTOMATIC)
+                    .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC);
+
+            Glide.with(this)
+                    .load(glideUrl)
+                    .circleCrop()
+                    .apply(requestOptions)
+//                    .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                    .into(imageView1);
+
+        }else if (PICTURE_SHOW ==2) {
+            String url = AppConfig.BASE_URL + "downloadFile/abc.jpg";
+    //                Picasso.get().load(url).resize(50, 50).into(imageView1);
+
+            /**
+             * USING AUTHENTICATION
+             */
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .addInterceptor(new Interceptor() {
+                        @Override
+                        public okhttp3.Response intercept(Chain chain) throws IOException {
+                            Request newRequest = chain.request().newBuilder()
+                                    .addHeader("Authorization", authHeader)
+                                    .build();
+                            return chain.proceed(newRequest);
+                        }
+                    }).build();
+
+            Picasso picassoBuilder = new Picasso.Builder(this)
+                    .downloader(new OkHttp3Downloader(client))
+                    .build();
+            picassoBuilder.setIndicatorsEnabled(true);
+
+            /**
+             * Picasso Caching Strategy Doesn't Work
+             * Must Create Mannual Store to Memory or Disk To enable Caching Strategy
+             */
+
+            //Show Image
+            picassoBuilder.load(url)
+                    .networkPolicy(NetworkPolicy.OFFLINE)
+                    .rotate(-90)
+                    .into(imageView1, new com.squareup.picasso.Callback.EmptyCallback() {
+                        @Override
+                        public void onError(Exception e) {
+                            picassoBuilder.load(url)
+                                    .rotate(-90)
+                                    .into(imageView1);
+                            Log.d("Picasso", "Error Bos");
+                        }
+                    });
+        }
+
+    }
+
 }
+
+

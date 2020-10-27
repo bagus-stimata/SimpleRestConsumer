@@ -43,10 +43,10 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.2'
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
+    implementation 'androidx.wear:wear:1.0.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
-
 
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.cardview:cardview:1.0.0'
@@ -61,7 +61,6 @@ dependencies {
      * 4. Glide for Pictures (Next Sample Project)
      * 5. Picasso for Pictures (Next Sample Project)
      */
-    implementation 'com.squareup.okhttp3:logging-interceptor:3.10.0'
 
     //Spring Android Rest Client
     implementation 'org.springframework.android:spring-android-rest-template:1.0.1.RELEASE'
@@ -71,10 +70,12 @@ dependencies {
     // retrofit
     implementation 'com.squareup.retrofit2:retrofit:2.8.2'
     implementation 'com.squareup.retrofit2:converter-gson:2.8.2'
+    implementation 'com.squareup.okhttp3:logging-interceptor:3.10.0'
 
     // Glide for Photo View
     implementation 'com.github.bumptech.glide:glide:4.11.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+    implementation 'com.github.bumptech.glide:okhttp3-integration:4.4.0'
 
     //Picasso for Image View
 //    implementation 'com.squareup.picasso:picasso:2.5.2'
@@ -83,6 +84,7 @@ dependencies {
     // ButterKnife: Binding Component TextView Button Dll
     implementation 'com.jakewharton:butterknife:10.2.1'
     annotationProcessor 'com.jakewharton:butterknife-compiler:10.2.1'
+    compileOnly 'com.google.android.wearable:wearable:2.5.0'
 
 
 }
