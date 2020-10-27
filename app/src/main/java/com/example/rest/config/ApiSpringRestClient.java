@@ -1,5 +1,7 @@
 package com.example.rest.config;
 
+import com.example.rest.AppConfig;
+
 import org.springframework.http.HttpAuthentication;
 import org.springframework.http.HttpBasicAuthentication;
 import org.springframework.http.HttpHeaders;
@@ -15,8 +17,8 @@ public class ApiSpringRestClient {
     private HttpHeaders requestHeadersMultiPart;
 
 //    private String baseUrl = "http://ssp-surabaya.ddns.net:8989/rest/";
-//    private String username = "user01";
-//    private String password = "Welcome1";
+    private String username = AppConfig.BASIC_AUTH_USERNAME;
+    private String password = AppConfig.BASIC_AUTH_PASSWORD;
 
     private static ApiSpringRestClient ourInstance;
 
@@ -30,14 +32,24 @@ public class ApiSpringRestClient {
 
     public HttpHeaders getRequestHeaders(){
         requestHeaders = new HttpHeaders();
+        /**
+         * Cuma ini aja bagian securitynya
+         */
+        HttpAuthentication authHeader = new HttpBasicAuthentication(username, password);
+        requestHeaders.setAuthorization(authHeader);
 
-//        HttpAuthentication authHeader = new HttpBasicAuthentication(username, password);
-//        requestHeaders.setAuthorization(authHeader);
         requestHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         return  requestHeaders;
     }
     public HttpHeaders getRequestHeaders_FileDownload(){
         requestHeadersMultiPart = new HttpHeaders();
+
+        /**
+         * Cuma ini aja bagian securitynya
+         */
+        HttpAuthentication authHeader = new HttpBasicAuthentication(username, password);
+        requestHeadersMultiPart.setAuthorization(authHeader);
+
         /**
          *  requestHeadersMultiPart.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
          * harus dipasangkan dengan

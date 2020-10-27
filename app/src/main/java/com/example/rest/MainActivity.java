@@ -13,11 +13,17 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import  com.squareup.picasso.*;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import com.example.rest.retrofit_apiservice.RetrofitApiService;
 import com.example.rest.config.ApiRetrofitRetrofit;
 import com.example.rest.model.Employee;
@@ -28,14 +34,18 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -48,7 +58,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 public class MainActivity extends AppCompatActivity {
-    static int REST_CLIENT_METHOD = 1; //1. Spring Rest Client, 2. Retrofit, 3. Volley
+    static int REST_CLIENT_METHOD = 1;  //   1. Spring Rest Template Client, 2. Retrofit, 3. Volley
+    static int PICTURE_SHOW = 2;        //   1. Glide, 2. Picasso (Rest Mehod Harus 1. Spring Rest Template Client)
+    public String authHeader = ""; //Untuk REtrofit2 springboot security
 
     Employee employee = new Employee();
     List<Employee> listEmployee = new ArrayList<>();
@@ -84,11 +96,20 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
 
+        /**
+         * RETROFIT 2
+         * SPRING BASIC AUTH
+         */
+        String stringBaseAuth = AppConfig.BASIC_AUTH_USERNAME + ":" + AppConfig.BASIC_AUTH_PASSWORD;
+        authHeader = "Basic " + Base64.encodeToString(stringBaseAuth.getBytes(), Base64.NO_WRAP);
+
+
         if (REST_CLIENT_METHOD==1) {
             simpleRestClient_WithSpringRestClient();
         }else if (REST_CLIENT_METHOD==2){
             simpleRestClient_WithRetrofit2();
         }
+
 
         floatingActionButton1.setOnClickListener(e -> {
             Intent fileIntent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -106,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
         floatingActionButton3.setOnClickListener(e -> {
             askCameraPermission();
         });
+
+
     }
 
 
@@ -143,22 +166,60 @@ public class MainActivity extends AppCompatActivity {
             listEmployee.clear();
             listEmployee.addAll(service.getAllItems());
             recyclerAdapter.setList(listEmployee);
-
-            try {
-//                Log.d("Hello", ">>> " + "aaaa");
-
-                byte[] responseByte = service.downloadFileByFileName("abc.jpg");
+            if (PICTURE_SHOW ==0) {
+                try {
+                    byte[] responseByte = service.downloadFileByFileName("abc.jpg");
 
 //                Toast.makeText(getApplicationContext(), "Oke lah bos: " , Toast.LENGTH_SHORT).show();
 //                Log.d("Hello", ">>> " + "aaaa");
 
-
 //                Toast.makeText(getApplicationContext(), String.valueOf(responseByte.contentLength()), Toast.LENGTH_SHORT).show();
-                InputStream is = new ByteArrayInputStream(responseByte);
-                Bitmap bitmap = BitmapFactory.decodeStream(is);
-                imageView1.setImageBitmap(bitmap);
-            }catch (Exception ex){
-                ex.printStackTrace();
+                    InputStream is = new ByteArrayInputStream(responseByte);
+                    Bitmap bitmap = BitmapFactory.decodeStream(is);
+                    imageView1.setImageBitmap(bitmap);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+
+            }else if (PICTURE_SHOW ==1) {
+                //USING GLIDE
+                String url = AppConfig.BASE_URL + "downloadFile/abc.jpg";
+                GlideUrl glideUrl = new GlideUrl(url,
+                        new LazyHeaders.Builder()
+                                .addHeader("Authorization", authHeader)
+//                                .addHeader("Cookie", AUTHORIZATION)
+//                                .addHeader("Accept", ABC)
+                                .build());
+
+                Glide.with(this)
+                        .load(glideUrl)
+                        .circleCrop()
+                        .into(imageView1);
+
+            }else if (PICTURE_SHOW ==2) {
+                //USING PICASSO
+                String url = AppConfig.BASE_URL + "downloadFile/abc.jpg";
+//                Picasso.get().load(url).resize(50, 50).into(imageView1);
+
+                /**
+                 * USING AUTHENTICATION
+                 */
+                OkHttpClient client = new OkHttpClient.Builder()
+                        .addInterceptor(new Interceptor() {
+                            @Override
+                            public okhttp3.Response intercept(Chain chain) throws IOException {
+                                Request newRequest = chain.request().newBuilder()
+                                        .addHeader("Authorization", authHeader)
+                                        .build();
+                                return chain.proceed(newRequest);
+                            }
+                        }).build();
+
+                Picasso picasso = new Picasso.Builder(this)
+                        .downloader(new OkHttp3Downloader(client))
+                        .build();
+                picasso.load(url).rotate(-90).into(imageView1);
+                picasso.setIndicatorsEnabled(true);
             }
 
         }catch (Exception ex){
@@ -169,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
     public void simpleRestClient_WithRetrofit2() {
         RetrofitApiService apiService = ApiRetrofitRetrofit.getClient().create(RetrofitApiService.class);
 
-        Call<Employee> call = apiService.getEmployeeRetrofitPath(3);
+        Call<Employee> call = apiService.getEmployeeRetrofitPath(authHeader, 3);
         call.enqueue(new Callback<Employee>() {
             @Override
             public void onResponse(Call<Employee> call, Response<Employee> response) {
@@ -185,17 +246,18 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-        Call<List<Employee>> callList = apiService.getListEmployeeRetrofit();
+        Call<List<Employee>> callList = apiService.getListEmployeeRetrofit(authHeader);
         callList.enqueue(new Callback<List<Employee>>() {
             @Override
             public void onResponse(Call<List<Employee>> call, Response<List<Employee>> response) {
-                listEmployee = response.body();
-                recyclerAdapter.setList(listEmployee);
-
-                Log.d("", "======================================");
-                listEmployee.forEach(employee1 -> {
-                    Log.d(">>>>>>>>>#####", employee1.getName() + " | " + employee1.getDesignation());
-                });
+                if (response.isSuccessful()) {
+                    listEmployee = response.body();
+                    recyclerAdapter.setList(listEmployee);
+                    Log.d("", "======================================");
+                    listEmployee.forEach(employee1 -> {
+                        Log.d(">>>>>>>>>#####", employee1.getName() + " | " + employee1.getDesignation());
+                    });
+                }
             }
 
             @Override
@@ -206,13 +268,15 @@ public class MainActivity extends AppCompatActivity {
         employee.setId(6);
         employee.setName("Tambahan Bos");
         employee.setDesignation("operator");
-        Call<Employee> callCreateEmployee = apiService.createEmployee(employee);
+        Call<Employee> callCreateEmployee = apiService.createEmployee(authHeader, employee);
         callCreateEmployee.enqueue(new Callback<Employee>() {
             @Override
             public void onResponse(Call<Employee> call, Response<Employee> response) {
-                Log.d("Masuk", "Masuk Create");
-                listEmployee.add(response.body());
-                recyclerAdapter.setList(listEmployee);
+                if (response.isSuccessful()) {
+                    Log.d("Masuk", "Masuk Create");
+                    listEmployee.add(response.body());
+                    recyclerAdapter.setList(listEmployee);
+                }
             }
 
             @Override
@@ -221,11 +285,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Call<Employee> callPutEmployee = apiService.putEmployee(2, employee);
+        Call<Employee> callPutEmployee = apiService.putEmployee(authHeader, 2, employee);
         callPutEmployee.enqueue(new Callback<Employee>() {
             @Override
             public void onResponse(Call<Employee> call, Response<Employee> response) {
-                Log.d("Put", "Put Berhasil");
+                if (response.isSuccessful()) Log.d("Put", "Put Berhasil");
             }
 
             @Override
@@ -246,15 +310,17 @@ public class MainActivity extends AppCompatActivity {
 //            }
 //        });
 
-        Call<ResponseBody> callRetrievePicture = apiService.downloadImageOrFile("aa.png");
+        Call<ResponseBody> callRetrievePicture = apiService.downloadImageOrFile(authHeader,"aa.png");
         callRetrievePicture.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                try {
-                    InputStream is = response.body().byteStream();
-                    Bitmap bitmap = BitmapFactory.decodeStream(is);
-                    imageView1.setImageBitmap(bitmap);
-                }catch (Exception ex){
+                if (response.isSuccessful()) {
+                    try {
+                        InputStream is = response.body().byteStream();
+                        Bitmap bitmap = BitmapFactory.decodeStream(is);
+                        imageView1.setImageBitmap(bitmap);
+                    } catch (Exception ex) {
+                    }
                 }
             }
 
@@ -345,7 +411,7 @@ public class MainActivity extends AppCompatActivity {
                 RequestBody requestBody_Photo = RequestBody.create(MediaType.parse(getContentResolver().getType(uriPath)), filePhoto);
                 MultipartBody.Part bodyPhoto = MultipartBody.Part.createFormData("file", filePhoto.getName(), requestBody_Photo);
 
-                Call<UploadFileResponse> call_Photo = apiService.uploadFileMultipart(bodyPhoto);
+                Call<UploadFileResponse> call_Photo = apiService.uploadFileMultipart(authHeader, bodyPhoto);
                 call_Photo.enqueue(new Callback<UploadFileResponse>() {
                     @Override
                     public void onResponse(Call<UploadFileResponse> call, Response<UploadFileResponse> response) {
@@ -385,7 +451,7 @@ public class MainActivity extends AppCompatActivity {
                 MultipartBody.Part body_File = MultipartBody.Part.createFormData("file", file.getName(), requestBody_File);
 
 
-                Call<UploadFileResponse> call_File = apiService.uploadFileMultipart(body_File);
+                Call<UploadFileResponse> call_File = apiService.uploadFileMultipart(authHeader,body_File);
                 call_File.enqueue(new Callback<UploadFileResponse>() {
                     @Override
                     public void onResponse(Call<UploadFileResponse> call, Response<UploadFileResponse> response) {
@@ -413,7 +479,7 @@ public class MainActivity extends AppCompatActivity {
                 RequestBody requestBody_Camera = RequestBody.create( MediaType.parse("image/*"), fileCamera);
                 MultipartBody.Part bodyCamera = MultipartBody.Part.createFormData("file", fileCamera.getName(), requestBody_Camera);
 
-                Call<UploadFileResponse> call_Camera = apiService.uploadFileMultipart(bodyCamera);
+                Call<UploadFileResponse> call_Camera = apiService.uploadFileMultipart(authHeader, bodyCamera);
                 call_Camera.enqueue(new Callback<UploadFileResponse>() {
                     @Override
                     public void onResponse(Call<UploadFileResponse> call, Response<UploadFileResponse> response) {
