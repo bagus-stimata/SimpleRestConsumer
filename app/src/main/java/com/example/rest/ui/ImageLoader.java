@@ -1,4 +1,4 @@
-package com.example.rest.springrest_apiservice;
+package com.example.rest.ui;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;

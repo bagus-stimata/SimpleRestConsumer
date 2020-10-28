@@ -5,7 +5,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
-import android.app.ActivityManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -20,15 +19,23 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.RequestQueue;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
+import com.example.rest.volley_apiservice.VolleyApiService;
+import com.google.gson.JsonObject;
 import  com.squareup.picasso.*;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.load.model.LazyHeaders;
 import com.example.rest.retrofit_apiservice.RetrofitApiService;
-import com.example.rest.config.ApiRetrofitRetrofit;
+import com.example.rest.config.ApiRetrofitClient;
 import com.example.rest.model.Employee;
 import com.example.rest.model.RecyclerAdapter;
 import com.example.rest.model.UploadFileResponse;
@@ -39,8 +46,11 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -60,9 +70,11 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONObject;
+
 public class MainActivity extends AppCompatActivity {
-    static int REST_CLIENT_METHOD = 1;  //   1. Spring Rest Template Client, 2. Retrofit, 3. Volley
-    static int PICTURE_SHOW = 2;        //   1. Glide, 2. Picasso (Rest Mehod Harus 1. Spring Rest Template Client)
+    static int REST_CLIENT_METHOD = 3;  //   1. Spring Rest Template Client, 2. Retrofit, 3. Volley
+    static int PICTURE_SHOW = 2;        //   1. Glide, 2. Picasso ==>> *NOTE  (Rest Mehod Harus 1. Spring Rest Template Client)
     public String authHeader = ""; //Untuk REtrofit2 springboot security
 
     Employee employee = new Employee();
@@ -115,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
             simpleRestClient_WithSpringRestClient();
         }else if (REST_CLIENT_METHOD==2){
             simpleRestClient_WithRetrofit2();
+        }else if (REST_CLIENT_METHOD==3){
+            simpleRestClient_WithVolley();
         }
 
 
@@ -247,8 +261,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
     public void simpleRestClient_WithRetrofit2() {
-        RetrofitApiService apiService = ApiRetrofitRetrofit.getClient().create(RetrofitApiService.class);
+        RetrofitApiService apiService = ApiRetrofitClient.getClient().create(RetrofitApiService.class); //Base Url disediakan pda ApiRetrofit
 
         Call<Employee> call = apiService.getEmployeeRetrofitPath(authHeader, 3);
         call.enqueue(new Callback<Employee>() {
@@ -352,6 +367,54 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void simpleRestClient_WithVolley(){
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+        String url = AppConfig.BASE_URL + "getEmployeePath/1";
+        JsonObjectRequest jsObjRequest = new JsonObjectRequest(com.android.volley.Request.Method.GET, url, null, new com.android.volley.Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                textView1.setText(response.toString());
+            }
+        }, new com.android.volley.Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+
+            }
+        });
+
+        StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Toast.makeText(getApplicationContext(), response, Toast.LENGTH_LONG).show();
+                textView1.setText(response.toString());
+            }
+        }, new com.android.volley.Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError volleyerror) {
+                Toast.makeText(getApplicationContext(), volleyerror.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        }) {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> headers =  new HashMap<String, String>();
+//                String credentials = AppConfig.BASIC_AUTH_USERNAME + ":" + AppConfig.BASIC_AUTH_PASSWORD;
+//                String encoded = "Basic "+ Base64.encodeToString(credentials.getBytes(), Base64.NO_WRAP);
+                headers.put("Authorization", authHeader);
+                return headers;
+            }
+        };
+
+//        requestQueue.add(stringRequest);
+//        requestQueue.add(jsObjRequest);
+        VolleyApiService volleyApiService = new VolleyApiService(this);
+//        String nilai = volleyApiService.getItemById(3);
+        volleyApiService.getAllItems();
+        volleyApiService.getAllItems_JsonArray();
+
+
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -415,7 +478,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void onActivityResult_Retrofit2(int requestCode, int resultCode, @Nullable Intent data) {
-        RetrofitApiService apiService = ApiRetrofitRetrofit.getClient().create(RetrofitApiService.class);
+        RetrofitApiService apiService = ApiRetrofitClient.getClient().create(RetrofitApiService.class);
         Uri uriPath = data.getData();
 
         switch (requestCode) {

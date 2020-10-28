@@ -19,10 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.FormHttpMessageConverter;
-import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJacksonHttpMessageConverter;
-import org.springframework.util.FileCopyUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
@@ -30,9 +28,6 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -126,16 +121,16 @@ public class SpringRestApiService {
                 try {
                     if (operation.equals("ADD_NEW")) {
                         url += "createEmployee";
-                        response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<Object>(newAccAccount, apiAuthenticationClient.getRequestHeaders()), Employee.class);
+                        response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<Object>(newAccAccount, apiAuthenticationClient.getHttpHeaders()), Employee.class);
                     } else if (operation.equals("UPDATE")) {
                         url += "putEmployee/" + id;
-                        response = restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<Object>(newAccAccount, apiAuthenticationClient.getRequestHeaders()), Employee.class);
+                        response = restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<Object>(newAccAccount, apiAuthenticationClient.getHttpHeaders()), Employee.class);
                     } else if (operation.equals("DELETE")) {
                         url += "deleteEmployee/" + id;
-                        response = restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity<Object>(apiAuthenticationClient.getRequestHeaders()), Employee.class);
+                        response = restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity<Object>(apiAuthenticationClient.getHttpHeaders()), Employee.class);
                     } else if (operation.equals("GET_BY_ID")) {
                         url += "getEmployeePath/" + id;
-                        response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(apiAuthenticationClient.getRequestHeaders()), Employee.class);
+                        response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(apiAuthenticationClient.getHttpHeaders()), Employee.class);
                     }
                     Log.d(TAG, url + " >> " + response.toString());
                 }catch (Exception ex){
@@ -178,7 +173,7 @@ public class SpringRestApiService {
             try {
                 // Make the network request
                 Log.d(TAG, url);
-                ResponseEntity<Employee[]> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(apiAuthenticationClient.getRequestHeaders()), Employee[].class);
+                ResponseEntity<Employee[]> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(apiAuthenticationClient.getHttpHeaders()), Employee[].class);
                 List<Employee> list = Arrays.asList(response.getBody());
                 return list;
 
@@ -254,7 +249,7 @@ public class SpringRestApiService {
 //                    HttpHeaders headers = new HttpHeaders();
 //                    headers.setAccept(Arrays.asList(MediaType.APPLICATION_OCTET_STREAM));
 //                    HttpEntity<String> entity = new HttpEntity<String>(headers);
-                    HttpEntity<ByteArrayResource> httpEntity = new HttpEntity<ByteArrayResource>(apiSpringRestClient.getRequestHeaders_FileDownload());
+                    HttpEntity<ByteArrayResource> httpEntity = new HttpEntity<ByteArrayResource>(apiSpringRestClient.getHttptHeaders_FileDownload());
 
 //                    ResponseEntity<byte[]> response = restTemplate.exchange(AppConfig.BASE_URL + "downloadFile/abc.jpg", HttpMethod.GET, entity, byte[].class, "1");  //uriVariable "1" TIDAK WAJIB, tapi sebaiknya
                     ResponseEntity<byte[]> response = restTemplate.exchange(AppConfig.BASE_URL + "downloadFile/" + fileName, HttpMethod.GET, httpEntity, byte[].class, "1");
