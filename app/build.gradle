@@ -72,7 +72,7 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.8.2'
     implementation 'com.squareup.okhttp3:logging-interceptor:3.10.0'
 
-    // Volley (Google)
+    // Volley form (Google). It's the same with grade
     implementation 'com.android.volley:volley:1.1.1'
 
     // Glide for Photo View
@@ -80,7 +80,7 @@ dependencies {
     annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
     implementation 'com.github.bumptech.glide:okhttp3-integration:4.4.0'
 
-    //Picasso for Image View
+    //Picasso for Image View.
 //    implementation 'com.squareup.picasso:picasso:2.5.2'
     implementation 'com.squareup.picasso:picasso:2.71828'
 

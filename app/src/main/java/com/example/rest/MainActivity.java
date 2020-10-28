@@ -19,16 +19,20 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
 import com.android.volley.RequestQueue;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.ImageRequest;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
-import com.example.rest.volley_apiservice.VolleyApiService;
-import com.google.gson.JsonObject;
+import com.example.rest.volley_apiservice.VolleyMultipartRequest;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import  com.squareup.picasso.*;
 
 import com.bumptech.glide.Glide;
@@ -46,7 +50,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,9 +74,16 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.util.FileCopyUtils;
 
 public class MainActivity extends AppCompatActivity {
+    String TAG = MainActivity.class.getSimpleName();
+
     static int REST_CLIENT_METHOD = 3;  //   1. Spring Rest Template Client, 2. Retrofit, 3. Volley
     static int PICTURE_SHOW = 2;        //   1. Glide, 2. Picasso ==>> *NOTE  (Rest Mehod Harus 1. Spring Rest Template Client)
     public String authHeader = ""; //Untuk REtrofit2 springboot security
@@ -367,52 +378,174 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private RequestQueue requestQueue ;
     public void simpleRestClient_WithVolley(){
-        RequestQueue requestQueue = Volley.newRequestQueue(this);
-        String url = AppConfig.BASE_URL + "getEmployeePath/1";
-        JsonObjectRequest jsObjRequest = new JsonObjectRequest(com.android.volley.Request.Method.GET, url, null, new com.android.volley.Response.Listener<JSONObject>() {
+        /**
+         * Deklarasi Quey For All
+         */
+        requestQueue = Volley.newRequestQueue(this);
+
+        String urlObject = AppConfig.BASE_URL + "getEmployeePath/3";
+        JsonObjectRequest jsObjRequest = new JsonObjectRequest(com.android.volley.Request.Method.GET, urlObject, null, new com.android.volley.Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                textView1.setText(response.toString());
+//                    Gson gson=new Gson();
+                Gson gson=new GsonBuilder().create();
+                Employee result = gson.fromJson(response.toString() , Employee.class);
+                textView1.setText(result.getName() + " >> " + result.getDesignation());
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-
-
             }
         });
 
-        StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
+//        StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
+//            @Override
+//            public void onResponse(String response) {
+//                Toast.makeText(getApplicationContext(), response, Toast.LENGTH_LONG).show();
+//                textView1.setText(response.toString());
+//            }
+//        }, new com.android.volley.Response.ErrorListener() {
+//            @Override
+//            public void onErrorResponse(VolleyError volleyerror) {
+//                Toast.makeText(getApplicationContext(), volleyerror.getMessage(), Toast.LENGTH_LONG).show();
+//            }
+//        }) {
+//            @Override
+//            public Map<String, String> getHeaders() throws AuthFailureError {
+//                Map<String, String> headers =  new HashMap<String, String>();
+////                String credentials = AppConfig.BASIC_AUTH_USERNAME + ":" + AppConfig.BASIC_AUTH_PASSWORD;
+////                String encoded = "Basic "+ Base64.encodeToString(credentials.getBytes(), Base64.NO_WRAP);
+//                headers.put("Authorization", authHeader);
+//                return headers;
+//            }
+//        };
+        requestQueue.add(jsObjRequest);
+
+        /**
+         * Get List
+         * Yang Dahuluan Selesaia akan menghentikan requestQueue
+         */
+        String urlList  = AppConfig.BASE_URL + "getListEmployee";
+
+        StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, urlList, new com.android.volley.Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Toast.makeText(getApplicationContext(), response, Toast.LENGTH_LONG).show();
-                textView1.setText(response.toString());
+//                    Gson gson=new Gson();
+                Gson gson=new GsonBuilder().create();
+                Employee[] results = gson.fromJson(response.toString() , Employee[].class);
+                //Or
+                Type userListType = new TypeToken<ArrayList<Employee>>(){}.getType();
+                ArrayList<Employee> employeList = gson.fromJson(response.toString(), userListType);
+
+                recyclerAdapter.setList(employeList);
+                Toast.makeText(getApplicationContext(), employeList.get(3).getName() + " >> " + employeList.get(3).getDesignation(), Toast.LENGTH_LONG).show();
+
+                requestQueue.stop();
+                requestQueue.cancelAll(TAG);
+
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError volleyerror) {
-                Toast.makeText(getApplicationContext(), volleyerror.getMessage(), Toast.LENGTH_LONG).show();
             }
-        }) {
+        }) ;
+        stringRequest.setTag(TAG);
+        requestQueue.add(stringRequest);
+
+        JsonArrayRequest arrayRequest = new JsonArrayRequest(urlList, new com.android.volley.Response.Listener<JSONArray>() {
             @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> headers =  new HashMap<String, String>();
-//                String credentials = AppConfig.BASIC_AUTH_USERNAME + ":" + AppConfig.BASIC_AUTH_PASSWORD;
-//                String encoded = "Basic "+ Base64.encodeToString(credentials.getBytes(), Base64.NO_WRAP);
-                headers.put("Authorization", authHeader);
-                return headers;
+            public void onResponse(JSONArray response) {
+                // Parsing json
+                Gson gson = new GsonBuilder().create();
+                List<Employee> list = new ArrayList<>();
+                for (int i = 0; i < response.length(); i++) {
+                    try {
+                        JSONObject obj = response.getJSONObject(i);
+                        Employee domain = gson.fromJson(obj.toString(), Employee.class);
+                        list.add(domain);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                recyclerAdapter.setList(list);
+                Toast.makeText(getApplicationContext(), list.get(1).getName() + " >> " + list.get(1).getDesignation(), Toast.LENGTH_LONG).show();
+//                Toast.makeText(context, response.toString(), Toast.LENGTH_LONG).show();
+
+                //STOP YANG LAIN >> SIAP AYANG DAHULU
+                requestQueue.stop();
+                requestQueue.cancelAll(TAG);
             }
-        };
+        }, new com.android.volley.Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError volleyerror) {
+            }
+        });
 
-//        requestQueue.add(stringRequest);
-//        requestQueue.add(jsObjRequest);
-        VolleyApiService volleyApiService = new VolleyApiService(this);
-//        String nilai = volleyApiService.getItemById(3);
-        volleyApiService.getAllItems();
-        volleyApiService.getAllItems_JsonArray();
+        JsonArrayRequest arrayRequest2 = new JsonArrayRequest(urlList, new com.android.volley.Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
+                // Parsing json
+                Gson gson = new GsonBuilder().create();
+                List<Employee> list = new ArrayList<>();
+                for (int i = 0; i < response.length(); i++) {
+                    try {
+                        JSONObject obj = response.getJSONObject(i);
+                        Employee domain = gson.fromJson(obj.toString(), Employee.class);
+                        list.add(domain);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                recyclerAdapter.setList(list);
+                Toast.makeText(getApplicationContext(), list.get(0).getName() + " >> " + list.get(0).getDesignation(), Toast.LENGTH_LONG).show();
+                //STOP YANG LAIN >> SIAP AYANG DAHULU
+                requestQueue.stop();
+                requestQueue.cancelAll(TAG);
+                /**
+                 * Pakai cara ini juga oke
+                 */
+                requestQueue.cancelAll(new RequestQueue.RequestFilter() {
+                    @Override
+                    public boolean apply(com.android.volley.Request<?> request) {
+                        return false;
+                    }
+                });
 
+            }
+        }, new com.android.volley.Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError volleyerror) {
+            }
+        });
 
+        arrayRequest.setTag(TAG);
+        arrayRequest2.setTag(TAG);
+        requestQueue.add(arrayRequest);
+        requestQueue.add(arrayRequest2);
+
+        /**
+         * Donwnload Image
+         */
+        String urlPhoto  = AppConfig.BASE_URL + "downloadFile/aa.png";
+        ImageRequest imageRequest = new ImageRequest(urlPhoto,
+                new com.android.volley.Response.Listener<Bitmap>() {
+                    @Override
+                    public void onResponse(Bitmap bitmap) {
+//                        mImageView.setImageBitmap(bitmap);
+                        imageView1.setImageBitmap(bitmap);
+                    }
+                }, 0, 0, Bitmap.Config.RGB_565,
+                new com.android.volley.Response.ErrorListener() {
+                    public void onErrorResponse(VolleyError error) {
+//                        mImageView.setImageResource(R.drawable.image_load_error);
+                    }
+                });
+
+        imageRequest.setTag("Other TAG");
+        requestQueue.add(imageRequest);
     }
 
     @Override
@@ -423,6 +556,8 @@ public class MainActivity extends AppCompatActivity {
                 onActivityResult_SpringRestClient(requestCode, resultCode, data);
             }else if (REST_CLIENT_METHOD==2) {
                 onActivityResult_Retrofit2(requestCode, resultCode, data);
+            }else if(REST_CLIENT_METHOD==3){
+                onActivityResult_Volley(requestCode, resultCode, data);
             }
         }//endif
     }
@@ -583,6 +718,76 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    protected void onActivityResult_Volley(int requestCode, int resultCode, @Nullable Intent data) {
+        String remoteUrl = AppConfig.BASE_URL + "uploadFile";
+
+        Uri uriPath = data.getData();
+
+        switch (requestCode) {
+            case 10:
+                final File filePhoto = MyFileUtils.convertBitmapToFile_UsingOsLangsung(getApplicationContext(), uriPath);
+                VolleyMultipartRequest volleyMultipartRequest = new VolleyMultipartRequest(com.android.volley.Request.Method.POST, remoteUrl,
+                        new com.android.volley.Response.Listener<NetworkResponse>() {
+                            @Override
+                            public void onResponse(NetworkResponse response) {
+                                try {
+                                    JSONObject obj = new JSONObject(new String(response.data));
+                                    Toast.makeText(getApplicationContext(), obj.getString("message"), Toast.LENGTH_SHORT).show();
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        },
+                        new com.android.volley.Response.ErrorListener() {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                            }
+                        }) {
+
+
+                    @Override
+                    protected Map<String, byte[]> getByteData() {
+                        Map<String, byte[]> params = new HashMap<>();
+                        long imagename = System.currentTimeMillis();
+//                        Resource resource = new FileSystemResource(filePhoto); //--> harus Resource
+                        byte[] fileAsResource = null;
+                        try {
+                            fileAsResource = FileCopyUtils.copyToByteArray(filePhoto);//Tidak bisa menggunakan ini *Note Sangat berbeda dengan download ya
+                        }catch (Exception ex){}
+
+                        params.put("file", fileAsResource);
+//                        params.put("image", new DataPart(imagename + ".png", getFileDataFromDrawable(bitmap)));
+                        return params;
+                    }
+                };
+
+
+                break;
+
+            case 11:
+                File file = MyFileUtils.convertPdfToFile_UsingOsLangsung(getApplicationContext(), uriPath);
+
+//                    Toast.makeText(this,file.getName() +  "" ,
+//                            Toast.LENGTH_LONG).show();
+
+                RequestBody requestBody_File = RequestBody.create(MediaType.parse(getContentResolver().getType(uriPath)), file);
+                MultipartBody.Part body_File = MultipartBody.Part.createFormData("file", file.getName(), requestBody_File);
+
+
+                break;
+            case 12:
+                Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+                File fileCamera = MyFileUtils.convertBitmapToFile_UsingViaByteArrayOs(getApplicationContext(), bitmap);
+
+                RequestBody requestBody_Camera = RequestBody.create( MediaType.parse("image/*"), fileCamera);
+                MultipartBody.Part bodyCamera = MultipartBody.Part.createFormData("file", fileCamera.getName(), requestBody_Camera);
+
+                break;
+            default:
+                break;
+        }
+
+    }
 
     protected void glideAndPicassoChaceLoad(){
         /**
