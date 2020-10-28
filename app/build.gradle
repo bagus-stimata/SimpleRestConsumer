@@ -72,6 +72,9 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.8.2'
     implementation 'com.squareup.okhttp3:logging-interceptor:3.10.0'
 
+    // Volley (Google)
+    implementation 'com.android.volley:volley:1.1.1'
+
     // Glide for Photo View
     implementation 'com.github.bumptech.glide:glide:4.11.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'

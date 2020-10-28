@@ -10,7 +10,7 @@ import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class ApiRetrofitRetrofit {
+public class ApiRetrofitClient {
 //    public static final String BASE_URL = AppConfig.BASE_URL;
 
     private static Retrofit retrofit = null;
@@ -41,7 +41,7 @@ public class ApiRetrofitRetrofit {
 
 
             retrofit = new Retrofit.Builder()
-                    .baseUrl(AppConfig.BASE_URL)
+                    .baseUrl(AppConfig.BASE_URL) //Base Url disediakan disini
                     .addConverterFactory(GsonConverterFactory.create())
                     .client(okHttpClient)
                     .build();

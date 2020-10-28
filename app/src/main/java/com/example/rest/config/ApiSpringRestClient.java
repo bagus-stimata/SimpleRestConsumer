@@ -30,7 +30,7 @@ public class ApiSpringRestClient {
     }
 
 
-    public HttpHeaders getRequestHeaders(){
+    public HttpHeaders getHttpHeaders(){
         requestHeaders = new HttpHeaders();
         /**
          * Cuma ini aja bagian securitynya
@@ -41,7 +41,7 @@ public class ApiSpringRestClient {
         requestHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         return  requestHeaders;
     }
-    public HttpHeaders getRequestHeaders_FileDownload(){
+    public HttpHeaders getHttptHeaders_FileDownload(){
         requestHeadersMultiPart = new HttpHeaders();
 
         /**
