@@ -19,7 +19,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.NetworkResponse;
+import com.android.volley.AuthFailureError;
 import com.android.volley.RequestQueue;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.ImageRequest;
@@ -29,11 +29,11 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
-import com.example.rest.volley_apiservice.VolleyMultipartRequest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import  com.squareup.picasso.*;
+
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.model.GlideUrl;
@@ -77,9 +77,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.util.FileCopyUtils;
 
 public class MainActivity extends AppCompatActivity {
     String TAG = MainActivity.class.getSimpleName();
@@ -380,6 +377,10 @@ public class MainActivity extends AppCompatActivity {
 
     private RequestQueue requestQueue ;
     public void simpleRestClient_WithVolley(){
+        /**
+         * RECOMMENDED USE THIS
+         *  https://github.com/DWorkS/VolleyPlus
+         */
         /**
          * Deklarasi Quey For All
          */
@@ -719,47 +720,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void onActivityResult_Volley(int requestCode, int resultCode, @Nullable Intent data) {
+        /**
+         * RECOMMENDED USE THIS
+         *  https://github.com/DWorkS/VolleyPlus
+         */
         String remoteUrl = AppConfig.BASE_URL + "uploadFile";
-
         Uri uriPath = data.getData();
 
         switch (requestCode) {
             case 10:
                 final File filePhoto = MyFileUtils.convertBitmapToFile_UsingOsLangsung(getApplicationContext(), uriPath);
-                VolleyMultipartRequest volleyMultipartRequest = new VolleyMultipartRequest(com.android.volley.Request.Method.POST, remoteUrl,
-                        new com.android.volley.Response.Listener<NetworkResponse>() {
-                            @Override
-                            public void onResponse(NetworkResponse response) {
-                                try {
-                                    JSONObject obj = new JSONObject(new String(response.data));
-                                    Toast.makeText(getApplicationContext(), obj.getString("message"), Toast.LENGTH_SHORT).show();
-                                } catch (JSONException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        },
-                        new com.android.volley.Response.ErrorListener() {
-                            @Override
-                            public void onErrorResponse(VolleyError error) {
-                            }
-                        }) {
 
 
-                    @Override
-                    protected Map<String, byte[]> getByteData() {
-                        Map<String, byte[]> params = new HashMap<>();
-                        long imagename = System.currentTimeMillis();
-//                        Resource resource = new FileSystemResource(filePhoto); //--> harus Resource
-                        byte[] fileAsResource = null;
-                        try {
-                            fileAsResource = FileCopyUtils.copyToByteArray(filePhoto);//Tidak bisa menggunakan ini *Note Sangat berbeda dengan download ya
-                        }catch (Exception ex){}
 
-                        params.put("file", fileAsResource);
-//                        params.put("image", new DataPart(imagename + ".png", getFileDataFromDrawable(bitmap)));
-                        return params;
-                    }
-                };
 
 
                 break;
